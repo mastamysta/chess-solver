@@ -2,6 +2,15 @@
 
 #include "state.hpp"
 
+// King positions
+static constexpr int BLACK_KING_STARTING_ROW = 0;
+static constexpr int KING_STARTING_COL = 4;
+static constexpr int WHITE_KING_STARTING_ROW = 7;
+
+// Pawn positions
+static constexpr int BLACK_PAWN_ROW = 1;
+static constexpr int WHITE_PAWN_ROW = 6;
+
 TEST(GameStateTests, InitialTurnWhite) 
 {
   auto game = game::GameState();
@@ -68,7 +77,8 @@ TEST(GameStateTests, InitialKings)
 	auto game = game::GameState();
 
 	// 0th row is for black king
-	ASSERT_EQ(game.get_board()[0][4], game::GameState::Piece::BKING);
+	ASSERT_EQ(game.get_board()[BLACK_KING_STARTING_ROW][KING_STARTING_COL],
+										game::GameState::Piece::BKING);
 	ASSERT_EQ(game.get_board()[7][4], game::GameState::Piece::WKING);
 }
 
@@ -79,4 +89,201 @@ TEST(GameStateTests, InitialQueens)
 	// 0th row is for black king
 	ASSERT_EQ(game.get_board()[0][3], game::GameState::Piece::BQUEEN);
 	ASSERT_EQ(game.get_board()[7][3], game::GameState::Piece::WQUEEN);
+}
+
+TEST(GameStateTests, GetAt)
+{
+	auto game = game::GameState();
+	ASSERT_EQ(game.get_at(0, 3), game::GameState::Piece::BQUEEN);
+	ASSERT_EQ(game.get_at(7, 4), game::GameState::Piece::WKING);
+}
+
+
+TEST(GameStateTests, CanMovePawnOne)
+{
+	auto game = game::GameState();
+
+	uint8_t row_o = 1, col_o = 4, row_d = row_o+1, col_d = col_o;
+
+	ASSERT_TRUE(game.move(row_o, col_o, row_d, col_d, true));
+	ASSERT_EQ(game.get_at(row_o, col_o), game::GameState::Piece::NONE);
+	ASSERT_EQ(game.get_at(row_d, col_d), game::GameState::Piece::BPAWN);
+}
+TEST(GameStateTests, CanMovePawnTwoOnFirst)
+{
+	auto game = game::GameState();
+
+	uint8_t row_o = 1, col_o = 4, row_d = row_o+2, col_d = col_o;
+
+	ASSERT_TRUE(game.move(row_o, col_o, row_d, col_d, true));
+	ASSERT_EQ(game.get_at(row_o, col_o), game::GameState::Piece::NONE);
+	ASSERT_EQ(game.get_at(row_d, col_d), game::GameState::Piece::BPAWN);
+}
+
+TEST(GameStateTests, CantMovePawnDiag)
+{
+	auto game = game::GameState();
+
+	uint8_t row_o = 1, col_o = 4, row_d = row_o+2, col_d = col_o+1;
+
+	ASSERT_FALSE(game.move(row_o, col_o, row_d, col_d, true));
+	ASSERT_EQ(game.get_at(row_o, col_o), game::GameState::Piece::BPAWN);
+	ASSERT_EQ(game.get_at(row_d, col_d), game::GameState::Piece::NONE);
+}
+
+TEST(GameStateTests, CantMoveBlackPawnBack)
+{
+	auto game = game::GameState();
+
+	// First move the black pawn forward.
+	uint8_t row_o = 1, col_o = 4, row_d = row_o+2, col_d = col_o;
+	ASSERT_TRUE(game.move(row_o, col_o, row_d, col_d, true));
+	// Now try and move it backwards.
+	ASSERT_FALSE(game.move(row_d, col_d, row_d-1, col_d, true));
+}
+
+TEST(GameStateTests, CantMoveWhitePawnBack)
+{
+	auto game = game::GameState();
+
+	// First move the white pawn forward.
+	uint8_t row_o = 6, col_o = 4, row_d = row_o-2, col_d = col_o;
+	ASSERT_TRUE(game.move(row_o, col_o, row_d, col_d, true));
+	// Now try and move it backwards.
+	ASSERT_FALSE(game.move(row_d, col_d, row_d + 1, col_d, true));
+}
+
+TEST(GameStateTests, CantMoveWhitePawnTwoOtherwise)
+{
+	auto game = game::GameState();
+
+	// First move the white pawn forward.
+	uint8_t row_o = 6, col_o = 4, row_d = row_o-1, col_d = col_o;
+	ASSERT_TRUE(game.move(row_o, col_o, row_d, col_d, true));
+	// Now try and move it forward two.
+	ASSERT_FALSE(game.move(row_d, col_d, row_d-2, col_d, true));
+}
+
+TEST(GameStateTests, CantMoveBlackPawnTwoOtherwise)
+{
+	auto game = game::GameState();
+
+	// First move the black pawn forward.
+	uint8_t row_o = 1, col_o = 4, row_d = row_o + 1, col_d = col_o;
+	ASSERT_TRUE(game.move(row_o, col_o, row_d, col_d, true));
+	// Now try and move it forward two.
+	ASSERT_FALSE(game.move(row_d, col_d, row_d + 2, col_d, true));
+}
+
+TEST(GameStateTests, PawnCantMoveZero)
+{
+	auto game = game::GameState();
+
+	// First move the black pawn forward.
+	uint8_t row_o = 1, col_o = 4, row_d = row_o, col_d = col_o;
+	ASSERT_FALSE(game.move(row_o, col_o, row_d, col_d, true));
+}
+
+TEST(GameStateTests, BlackPawnCantJump)
+{
+	auto game = game::GameState();
+
+	// First move the black king in front of a pawn.
+	ASSERT_TRUE(game.move(BLACK_KING_STARTING_ROW, 
+						  KING_STARTING_COL, 
+						  BLACK_KING_STARTING_ROW+2,
+						  KING_STARTING_COL,
+						  false));
+	// Now try to skip pawn over king.
+	ASSERT_FALSE(game.move(BLACK_KING_STARTING_ROW+1,
+						   KING_STARTING_COL, 
+						   BLACK_KING_STARTING_ROW+3, 
+						   KING_STARTING_COL,
+						   true));
+}
+
+TEST(GameStateTests, WhitePawnCantJump)
+{
+	auto game = game::GameState();
+
+	// First move the white king in front of a pawn.
+	ASSERT_TRUE(game.move(WHITE_KING_STARTING_ROW,
+							KING_STARTING_COL,
+							WHITE_KING_STARTING_ROW - 2,
+							KING_STARTING_COL,
+							false));
+	// Now try to skip pawn over king.
+	ASSERT_FALSE(game.move(WHITE_KING_STARTING_ROW - 1,
+							KING_STARTING_COL,
+							WHITE_KING_STARTING_ROW - 3,
+							KING_STARTING_COL,
+							true));
+}
+
+TEST(GameStateTests, PawnCantCaptureOneForward)
+{
+	auto game = game::GameState();
+	auto new_king_row = BLACK_PAWN_ROW+1;
+
+	ASSERT_TRUE(game.move(WHITE_KING_STARTING_ROW,
+						  KING_STARTING_COL,
+						  new_king_row,
+						  KING_STARTING_COL,
+						  false));
+	ASSERT_FALSE(game.move(1,
+						   KING_STARTING_COL,
+						   new_king_row,
+						   KING_STARTING_COL,
+						   true));
+}
+
+TEST(GameStateTests, PawnCantCaptureTwoForward)
+{
+	auto game = game::GameState();
+	auto new_king_row = BLACK_PAWN_ROW+2;
+
+	ASSERT_TRUE(game.move(WHITE_KING_STARTING_ROW,
+							KING_STARTING_COL,
+							new_king_row,
+							KING_STARTING_COL,
+							false));
+	ASSERT_FALSE(game.move(BLACK_PAWN_ROW,
+							KING_STARTING_COL,
+							new_king_row,
+							KING_STARTING_COL,
+							true));
+}
+
+TEST(GameStateTests, BlackPawnCanCaptureOneDiagonally)
+{
+	auto game = game::GameState();
+	auto new_king_row = BLACK_PAWN_ROW+1;
+
+	ASSERT_TRUE(game.move(WHITE_KING_STARTING_ROW,
+							KING_STARTING_COL,
+							new_king_row,
+							KING_STARTING_COL,
+							false));
+	ASSERT_TRUE(game.move(BLACK_PAWN_ROW,
+							KING_STARTING_COL-1,
+							new_king_row,
+							KING_STARTING_COL,
+							true));
+}
+
+TEST(GameStateTests, WhitePawnCanCaptureOneDiagonally)
+{
+	auto game = game::GameState();
+	auto new_king_row = WHITE_PAWN_ROW - 1;
+
+	ASSERT_TRUE(game.move(BLACK_KING_STARTING_ROW,
+				KING_STARTING_COL,
+				new_king_row,
+				KING_STARTING_COL,
+				false));
+	ASSERT_TRUE(game.move(WHITE_PAWN_ROW,
+				KING_STARTING_COL - 1,
+				new_king_row,
+				KING_STARTING_COL,
+				true));
 }
