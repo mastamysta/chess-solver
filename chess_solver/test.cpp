@@ -287,3 +287,88 @@ TEST(GameStateTests, WhitePawnCanCaptureOneDiagonally)
 				KING_STARTING_COL,
 				true));
 }
+
+TEST(GameStateTests, PawnCantCaptureOwnPiece)
+{
+	auto game = game::GameState();
+	auto new_pawn_col = 4;
+	auto new_pawn_row = WHITE_PAWN_ROW - 1;
+
+	ASSERT_TRUE(game.move(WHITE_PAWN_ROW,
+							0,
+							new_pawn_row,
+							new_pawn_col,
+							false));
+	ASSERT_FALSE(game.move(WHITE_PAWN_ROW,
+							new_pawn_col-1,
+							new_pawn_row,
+							new_pawn_col,
+							true));
+}
+
+TEST(GameStateTests, KingCantCaptureOwnPiece)
+{
+	auto game = game::GameState();
+
+	ASSERT_FALSE(game.move(BLACK_KING_STARTING_ROW,
+							KING_STARTING_COL,
+							BLACK_KING_STARTING_ROW+1,
+							KING_STARTING_COL,
+							true));
+
+}
+
+TEST(GameStateTests, KingCantMoveNowhere)
+{
+	auto game = game::GameState();
+
+	ASSERT_FALSE(game.move(BLACK_KING_STARTING_ROW,
+							KING_STARTING_COL,
+							BLACK_KING_STARTING_ROW,
+							KING_STARTING_COL,
+							true));
+}
+
+TEST(GameStateTests, KingCantMoveMoreThanOneForward)
+{
+	auto game = game::GameState();
+
+	ASSERT_FALSE(game.move(BLACK_KING_STARTING_ROW,
+							KING_STARTING_COL,
+							BLACK_KING_STARTING_ROW+2,
+							KING_STARTING_COL,
+							true));
+}
+
+TEST(GameStateTests, KingCantMoveMoreThanOneSideways)
+{
+	auto game = game::GameState();
+	auto new_king_row = 4;
+	
+	ASSERT_TRUE(game.move(BLACK_KING_STARTING_ROW,
+							KING_STARTING_COL,
+							new_king_row,
+							KING_STARTING_COL,
+							false));
+	ASSERT_FALSE(game.move(new_king_row,
+							KING_STARTING_COL,
+							new_king_row,
+							KING_STARTING_COL+2,
+							true));
+}
+
+TEST(GameStateTests, KingCanCapture)
+{
+	auto game = game::GameState();
+
+	ASSERT_TRUE(game.move(WHITE_KING_STARTING_ROW,
+							KING_STARTING_COL,
+							BLACK_PAWN_ROW+1,
+							KING_STARTING_COL,
+							false));
+	ASSERT_TRUE(game.move(BLACK_PAWN_ROW+1,
+							KING_STARTING_COL,
+							BLACK_PAWN_ROW,
+							KING_STARTING_COL,
+							true));
+}

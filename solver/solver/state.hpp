@@ -92,24 +92,8 @@ public:
 			  bool validate) -> bool
 	{
 		auto moved_piece = board[row_o][col_o];
-		bool valid = false;
 
-		switch (moved_piece)
-		{
-		case Piece::BPAWN:
-		case Piece::WPAWN:
-			valid = validate_pawn_move(row_o, col_o, row_d, col_d);
-			break;
-		case Piece::BKING:
-		case Piece::WKING:
-			valid = true;
-			break;
-		default:
-			std::cout << "ERROR: Unexpected piece.\n";
-			break;
-		}
-
-		if (!valid)
+		if (validate && !validate_move(row_o, col_o, row_d, col_d))
 			return false;
 
 		board[row_d][col_d] = moved_piece;
@@ -131,6 +115,9 @@ private:
 
 	auto is_black(Piece piece) const -> bool
 	{
+		if (piece == Piece::NONE) // Yuck exceptions, but lets make debugging easy.
+			throw std::invalid_argument("Attempting to check colour on NONE.\n");
+
 		switch (piece)
 		{
 		case Piece::BPAWN:
@@ -146,7 +133,57 @@ private:
 
 		return false;
 	}
+
+	auto same_colour(Piece a, Piece b) const -> bool
+	{
+		return is_black(a) == is_black(b);
+	}
+
+	auto validate_move(BoardIndex row_o,
+					   BoardIndex col_o,
+					   BoardIndex row_d,
+					   BoardIndex col_d) const -> bool
+	{
+		auto moved_piece = board[row_o][col_o];
+
+		// Not moving a piece is NEVER allowed.
+		if (row_o == row_d && col_o == col_d)
+			return false;
+
+		switch (moved_piece)
+		{
+		case Piece::BPAWN:
+		case Piece::WPAWN:
+			return validate_pawn_move(row_o, col_o, row_d, col_d);
+		case Piece::BKING:
+		case Piece::WKING:
+			return validate_king_move(row_o, col_o, row_d, col_d);
+		default:
+			std::cout << "ERROR: Unexpected piece.\n";
+			break;
+		}
+
+		return false;
+	}
 	
+	auto validate_king_move(BoardIndex row_o,
+							BoardIndex col_o,
+							BoardIndex row_d,
+							BoardIndex col_d) const -> bool
+	{
+		auto piece = board[row_o][col_o];
+		auto dest_piece = board[row_d][col_d];
+		
+		// Rule to avoid capturing own piece.
+		if (dest_piece != Piece::NONE && same_colour(piece, dest_piece))
+			return false;
+
+		if (std::abs(row_o - row_d) > 1 || std::abs(col_o - col_d) > 1)
+			return false;
+
+		return true;
+	}
+
 	auto validate_pawn_move(BoardIndex row_o,
 							BoardIndex col_o,
 							BoardIndex row_d,
@@ -164,7 +201,7 @@ private:
 		// Early rules to allow going one diagonally to capture.
 		if (std::abs(row_o - row_d) == 1 && std::abs(col_o - col_d) == 1 &&
 			dest_piece != Piece::NONE &&
-			is_black(piece) != is_black(dest_piece))
+			!same_colour(piece, dest_piece))
 			return true;
 
 		// Rule to avoid moving sideways.
