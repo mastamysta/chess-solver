@@ -2,15 +2,32 @@
 
 #include "state.hpp"
 
+static constexpr int BLACK_HOME_ROW = 0;
+static constexpr int WHITE_HOME_ROW = 7;
+
 // King positions
-static constexpr int BLACK_KING_STARTING_ROW = 0;
+static constexpr int BLACK_KING_STARTING_ROW = BLACK_HOME_ROW;
 static constexpr int KING_STARTING_COL = 4;
-static constexpr int WHITE_KING_STARTING_ROW = 7;
+static constexpr int WHITE_KING_STARTING_ROW = WHITE_HOME_ROW;
 
 // Pawn positions
 static constexpr int BLACK_PAWN_ROW = 1;
 static constexpr int WHITE_PAWN_ROW = 6;
 
+// Rook positions
+static constexpr int LEFT_ROOK_COL = 0;
+static constexpr int RIGHT_ROOK_COL = 7;
+
+// Bishop positions
+static constexpr int LEFT_BISHOP_COL = 2;
+static constexpr int RIGHT_BISHOP_COL = 5;
+
+// Knight positions
+static constexpr int LEFT_KNIGHT_COL = 1;
+static constexpr int RIGHT_KNIGHT_COL = 6;
+
+// Queen positions
+static constexpr int QUEEN_STARTING_COL = 3;
 TEST(GameStateTests, InitialTurnWhite) 
 {
   auto game = game::GameState();
@@ -306,6 +323,7 @@ TEST(GameStateTests, PawnCantCaptureOwnPiece)
 							true));
 }
 
+
 TEST(GameStateTests, KingCantCaptureOwnPiece)
 {
 	auto game = game::GameState();
@@ -318,6 +336,7 @@ TEST(GameStateTests, KingCantCaptureOwnPiece)
 
 }
 
+
 TEST(GameStateTests, KingCantMoveNowhere)
 {
 	auto game = game::GameState();
@@ -329,6 +348,7 @@ TEST(GameStateTests, KingCantMoveNowhere)
 							true));
 }
 
+
 TEST(GameStateTests, KingCantMoveMoreThanOneForward)
 {
 	auto game = game::GameState();
@@ -339,6 +359,7 @@ TEST(GameStateTests, KingCantMoveMoreThanOneForward)
 							KING_STARTING_COL,
 							true));
 }
+
 
 TEST(GameStateTests, KingCantMoveMoreThanOneSideways)
 {
@@ -357,18 +378,238 @@ TEST(GameStateTests, KingCantMoveMoreThanOneSideways)
 							true));
 }
 
+
 TEST(GameStateTests, KingCanCapture)
 {
 	auto game = game::GameState();
+	auto new_king_row = BLACK_PAWN_ROW + 1;
 
 	ASSERT_TRUE(game.move(WHITE_KING_STARTING_ROW,
 							KING_STARTING_COL,
-							BLACK_PAWN_ROW+1,
+							new_king_row,
 							KING_STARTING_COL,
 							false));
-	ASSERT_TRUE(game.move(BLACK_PAWN_ROW+1,
+	ASSERT_TRUE(game.move(new_king_row,
 							KING_STARTING_COL,
 							BLACK_PAWN_ROW,
 							KING_STARTING_COL,
+							true));
+}
+
+
+TEST(GameStateTests, KingCanMove)
+{
+	auto game = game::GameState();
+	auto new_king_row = BLACK_PAWN_ROW + 1;
+
+	ASSERT_TRUE(game.move(WHITE_KING_STARTING_ROW,
+							KING_STARTING_COL,
+							new_king_row,
+							KING_STARTING_COL,
+							false));
+	ASSERT_TRUE(game.move(new_king_row,
+							KING_STARTING_COL,
+							new_king_row+1,
+							KING_STARTING_COL,
+							true));
+}
+
+TEST(GameStateTests, RookCanMove)
+{
+	auto game = game::GameState();
+	auto new_rook_row = WHITE_PAWN_ROW - 1;
+
+	ASSERT_TRUE(game.move(WHITE_HOME_ROW,
+							LEFT_ROOK_COL,
+							new_rook_row,
+							LEFT_ROOK_COL,
+							false));
+	ASSERT_TRUE(game.move(new_rook_row,
+							LEFT_ROOK_COL,
+							new_rook_row - 1,
+							LEFT_ROOK_COL,
+							true));
+}
+
+
+TEST(GameStateTests, RookCantMoveDiagonally)
+{
+	auto game = game::GameState();
+	auto new_rook_row = WHITE_PAWN_ROW - 1;
+
+	ASSERT_TRUE(game.move(WHITE_HOME_ROW,
+							LEFT_ROOK_COL,
+							new_rook_row,
+							LEFT_ROOK_COL,
+							false));
+	ASSERT_FALSE(game.move(new_rook_row,
+							LEFT_ROOK_COL,
+							new_rook_row-1,
+							LEFT_ROOK_COL+1,
+							true));
+}
+
+
+TEST(GameStateTests, RookCantJump)
+{
+	auto game = game::GameState();
+	auto new_rook_row = WHITE_PAWN_ROW - 1;
+
+	ASSERT_FALSE(game.move(WHITE_HOME_ROW,
+							LEFT_ROOK_COL,
+							new_rook_row,
+							LEFT_ROOK_COL,
+							true));
+}
+
+
+TEST(GameStateTests, RookCanCapture)
+{
+	auto game = game::GameState();
+	auto new_rook_row = WHITE_PAWN_ROW - 1;
+
+	ASSERT_TRUE(game.move(WHITE_HOME_ROW,
+							LEFT_ROOK_COL,
+							new_rook_row,
+							LEFT_ROOK_COL,
+							false));
+	ASSERT_TRUE(game.move(new_rook_row,
+							LEFT_ROOK_COL,
+							BLACK_PAWN_ROW,
+							LEFT_ROOK_COL,
+							true));
+}
+
+TEST(GameStateTests, BishopCanMove)
+{
+	auto game = game::GameState();
+	auto new_bishop_row = WHITE_PAWN_ROW - 1;
+
+	ASSERT_TRUE(game.move(WHITE_HOME_ROW,
+							LEFT_BISHOP_COL,
+							new_bishop_row,
+							LEFT_BISHOP_COL,
+							false));
+	ASSERT_TRUE(game.move(new_bishop_row,
+							LEFT_BISHOP_COL,
+							new_bishop_row-1,
+							LEFT_BISHOP_COL+1,
+							true));
+}
+
+
+TEST(GameStateTests, BishopCantMoveNonDiagonal)
+{
+	auto game = game::GameState();
+	auto new_bishop_row = WHITE_PAWN_ROW - 1;
+
+	ASSERT_TRUE(game.move(WHITE_HOME_ROW,
+							LEFT_BISHOP_COL,
+							new_bishop_row,
+							LEFT_BISHOP_COL,
+							false));
+	ASSERT_FALSE(game.move(new_bishop_row,
+							LEFT_BISHOP_COL,
+							new_bishop_row,
+							LEFT_BISHOP_COL + 1,
+							true));
+}
+
+
+TEST(GameStateTests, BishopCantJump)
+{
+	auto game = game::GameState();
+
+	ASSERT_FALSE(game.move(WHITE_HOME_ROW,
+							LEFT_BISHOP_COL,
+							WHITE_HOME_ROW-2,
+							LEFT_BISHOP_COL+2,
+							true));
+}
+
+TEST(GameStateTests, KnightCanMove)
+{
+	auto game = game::GameState();
+
+	ASSERT_TRUE(game.move(WHITE_HOME_ROW,
+							RIGHT_KNIGHT_COL,
+							WHITE_HOME_ROW - 2,
+							RIGHT_KNIGHT_COL + 1,
+							true));
+}
+
+TEST(GameStateTests, KnightCantMoveFar)
+{
+	auto game = game::GameState();
+
+	ASSERT_FALSE(game.move(WHITE_HOME_ROW,
+							RIGHT_KNIGHT_COL,
+							WHITE_HOME_ROW - 2,
+							RIGHT_KNIGHT_COL - 3,
+							true));
+}
+
+
+TEST(GameStateTests, QueenCanMoveStraight)
+{
+	auto game = game::GameState();
+	auto new_queen_row = WHITE_PAWN_ROW - 1;
+
+	ASSERT_TRUE(game.move(WHITE_HOME_ROW,
+							QUEEN_STARTING_COL,
+							new_queen_row,
+							QUEEN_STARTING_COL,
+							false));
+	ASSERT_TRUE(game.move(new_queen_row,
+							QUEEN_STARTING_COL,
+							new_queen_row-1,
+							QUEEN_STARTING_COL,
+							true));
+}
+
+TEST(GameStateTests, QueenCanMoveDiagonally)
+{
+	auto game = game::GameState();
+	auto new_queen_row = WHITE_PAWN_ROW - 1;
+
+	ASSERT_TRUE(game.move(WHITE_HOME_ROW,
+							QUEEN_STARTING_COL,
+							new_queen_row,
+							QUEEN_STARTING_COL,
+							false));
+	ASSERT_TRUE(game.move(new_queen_row,
+							QUEEN_STARTING_COL,
+							new_queen_row - 2,
+							QUEEN_STARTING_COL+2,
+							true));
+}
+
+TEST(GameStateTests, QueenCantJump)
+{
+	auto game = game::GameState();
+	auto new_queen_row = WHITE_PAWN_ROW - 1;
+
+	ASSERT_FALSE(game.move(BLACK_HOME_ROW,
+							QUEEN_STARTING_COL,
+							BLACK_HOME_ROW+2,
+							QUEEN_STARTING_COL+2,
+							true));
+}
+
+
+TEST(GameStateTests, QueenCantMoveRandomly)
+{
+	auto game = game::GameState();
+	auto new_queen_row = WHITE_PAWN_ROW - 1;
+
+	ASSERT_TRUE(game.move(WHITE_HOME_ROW,
+							QUEEN_STARTING_COL,
+							new_queen_row,
+							QUEEN_STARTING_COL,
+							false));
+	ASSERT_FALSE(game.move(new_queen_row,
+							QUEEN_STARTING_COL,
+							new_queen_row - 3,
+							QUEEN_STARTING_COL + 2,
 							true));
 }

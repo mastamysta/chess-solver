@@ -2,6 +2,8 @@
 
 #include <vector>
 #include <iostream>
+#include <ranges>
+#include <algorithm>
 
 namespace game
 {
@@ -145,9 +147,14 @@ private:
 					   BoardIndex col_d) const -> bool
 	{
 		auto moved_piece = board[row_o][col_o];
+		auto dest_piece = board[row_d][col_d];
 
 		// Not moving a piece is NEVER allowed.
 		if (row_o == row_d && col_o == col_d)
+			return false;
+
+		// Capturing own piece is never allowed.
+		if (dest_piece != Piece::NONE && same_colour(moved_piece, dest_piece))
 			return false;
 
 		switch (moved_piece)
@@ -158,6 +165,18 @@ private:
 		case Piece::BKING:
 		case Piece::WKING:
 			return validate_king_move(row_o, col_o, row_d, col_d);
+		case Piece::BROOK:
+		case Piece::WROOK:
+			return validate_rook_move(row_o, col_o, row_d, col_d);
+		case Piece::BBISHOP:
+		case Piece::WBISHOP:
+			return validate_bishop_move(row_o, col_o, row_d, col_d);
+		case Piece::BKNIGHT:
+		case Piece::WKNIGHT:
+			return validate_knight_move(row_o, col_o, row_d, col_d);
+		case Piece::BQUEEN:
+		case Piece::WQUEEN:
+			return validate_queen_move(row_o, col_o, row_d, col_d);
 		default:
 			std::cout << "ERROR: Unexpected piece.\n";
 			break;
@@ -165,7 +184,106 @@ private:
 
 		return false;
 	}
+
+	auto get_range(int init, int dest) const -> std::vector<int>
+	{
+		std::vector<int> r(std::abs(init - dest) + 1, 0);
+		int direction = init - dest > 0 ? -1 : 1;
+		std::ranges::generate(r, [&init, direction]() { init += direction;
+		return init - direction;  });
+		return r;
+	}
 	
+	auto validate_queen_move(BoardIndex row_o,
+							BoardIndex col_o,
+							BoardIndex row_d,
+							BoardIndex col_d) const -> bool
+	{
+		return validate_bishop_move(row_o, col_o, row_d, col_d) ||
+					validate_rook_move(row_o, col_o, row_d, col_d);
+	}
+	
+	auto validate_knight_move(BoardIndex row_o,
+							BoardIndex col_o,
+							BoardIndex row_d,
+							BoardIndex col_d) const -> bool
+	{
+		auto vertical = std::abs(row_o - row_d);
+		auto horizontal = std::abs(col_o - col_d);
+
+		if (std::min(vertical, horizontal) != 1 ||
+			std::max(vertical, horizontal) != 2)
+			return false;
+
+		return true;
+	}
+	
+	auto validate_rook_move(BoardIndex row_o,
+							BoardIndex col_o,
+							BoardIndex row_d,
+							BoardIndex col_d) const -> bool
+	{
+		bool vertical = std::abs(row_o - row_d);
+		bool horizontal = std::abs(col_o - col_d);
+
+		// May only move horizontally or vertically.
+		if (vertical && horizontal)
+			return false;
+
+		auto orig = 0, dest = 0;
+
+		if (vertical)
+		{
+			orig = row_o;
+			dest = row_d;
+		}
+		else
+		{
+			orig = col_o;
+			dest = col_d;
+		}
+
+		auto r = get_range(orig, dest);
+
+		for (auto i : r)
+		{
+			if (i == dest || i == orig)
+				continue;
+
+			if ((vertical && board[i][col_o] != Piece::NONE) ||
+				(horizontal && board[row_o][i] != Piece::NONE))
+				return false;
+		}
+
+		return true;
+	}
+
+	auto validate_bishop_move(BoardIndex row_o,
+								BoardIndex col_o,
+								BoardIndex row_d,
+								BoardIndex col_d) const -> bool
+	{
+		if (std::abs(row_o - row_d) != std::abs(col_o - col_d))
+			return false;
+
+		auto dist = std::abs(row_o - row_d);
+		auto cols = get_range(col_o, col_d);
+		auto rows = get_range(row_o, row_d);
+
+		for (auto i = 0; i < dist; i++)
+		{
+			int col = cols[i], row = rows[i];
+
+			if (row == row_d || row == row_o)
+				continue;
+
+			if (board[row][col] != Piece::NONE)
+				return false;
+		}
+
+		return true;
+	}
+
 	auto validate_king_move(BoardIndex row_o,
 							BoardIndex col_o,
 							BoardIndex row_d,
@@ -173,10 +291,6 @@ private:
 	{
 		auto piece = board[row_o][col_o];
 		auto dest_piece = board[row_d][col_d];
-		
-		// Rule to avoid capturing own piece.
-		if (dest_piece != Piece::NONE && same_colour(piece, dest_piece))
-			return false;
 
 		if (std::abs(row_o - row_d) > 1 || std::abs(col_o - col_d) > 1)
 			return false;
@@ -200,8 +314,7 @@ private:
 
 		// Early rules to allow going one diagonally to capture.
 		if (std::abs(row_o - row_d) == 1 && std::abs(col_o - col_d) == 1 &&
-			dest_piece != Piece::NONE &&
-			!same_colour(piece, dest_piece))
+			dest_piece != Piece::NONE)
 			return true;
 
 		// Rule to avoid moving sideways.
