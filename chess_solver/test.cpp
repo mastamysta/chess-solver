@@ -514,6 +514,28 @@ TEST(GameStateTests, RookCanCapture)
 							true));
 }
 
+TEST(GameStateTests, CanCastle)
+{
+	auto game = game::GameState();
+
+	ASSERT_TRUE(game.move(WHITE_HOME_ROW,
+							LEFT_ROOK_COL+1,
+							WHITE_PAWN_ROW-1,
+							LEFT_ROOK_COL+1,
+							false));
+	ASSERT_TRUE(game.move(WHITE_HOME_ROW,
+							LEFT_ROOK_COL+2,
+							WHITE_PAWN_ROW-1,
+							LEFT_ROOK_COL+2,
+							false));
+
+	ASSERT_TRUE(game.move(WHITE_HOME_ROW,
+							LEFT_ROOK_COL,
+							WHITE_HOME_ROW,
+							KING_STARTING_COL,
+							true));
+}
+
 TEST(GameStateTests, BishopCanMove)
 {
 	auto game = game::GameState();
@@ -645,5 +667,70 @@ TEST(GameStateTests, QueenCantMoveRandomly)
 							QUEEN_STARTING_COL,
 							new_queen_row - 3,
 							QUEEN_STARTING_COL + 2,
+							true));
+}
+
+TEST(GameStateTests, StalemateNoMoves)
+{
+	auto game = game::GameState();
+	game.clear_board();
+	game.place_at(0, 0, game::GameState::Piece::BKING);
+	game.place_at(1, 7, game::GameState::Piece::WROOK);
+	game.place_at(7, 1, game::GameState::Piece::WROOK);
+	game.set_turn(game::GameState::Turn::BLACK);
+	
+	ASSERT_TRUE(game.get_stalemate());
+}
+
+TEST(GameStateTests, StalemateInsufficientMaterial)
+{
+	auto game = game::GameState();
+	game.clear_board();
+	game.place_at(0, 0, game::GameState::Piece::BKING);
+	game.place_at(7, 7, game::GameState::Piece::WKING);
+	game.set_turn(game::GameState::Turn::BLACK);
+
+	ASSERT_TRUE(game.get_stalemate());
+}
+
+
+TEST(GameStateTests, BlackCheckMate)
+{
+	auto game = game::GameState();
+	game.clear_board();
+	game.place_at(0, 0, game::GameState::Piece::BKING);
+	game.place_at(7, 1, game::GameState::Piece::WROOK);
+	game.place_at(7, 0, game::GameState::Piece::WROOK);
+	game.set_turn(game::GameState::Turn::BLACK);
+
+	ASSERT_TRUE(game.get_white_wins());
+}
+
+
+TEST(GameStateTests, WhiteCheckMate)
+{
+	auto game = game::GameState();
+	game.clear_board();
+	game.place_at(0, 0, game::GameState::Piece::WKING);
+	game.place_at(7, 1, game::GameState::Piece::BROOK);
+	game.place_at(7, 0, game::GameState::Piece::BROOK);
+	game.set_turn(game::GameState::Turn::WHITE);
+
+	ASSERT_TRUE(game.get_black_wins());
+}
+
+TEST(GameStateTests, MustAddressCheck)
+{
+	auto game = game::GameState();
+	game.clear_board();
+	game.place_at(0, 0, game::GameState::Piece::BKING);
+	game.place_at(4, 2, game::GameState::Piece::BPAWN);
+	game.place_at(7, 0, game::GameState::Piece::WROOK);
+	game.set_turn(game::GameState::Turn::BLACK);
+
+	ASSERT_FALSE(game.move(4,
+							2,
+							5,
+							2,
 							true));
 }

@@ -82,6 +82,23 @@ public:
 		return board;
 	}
 
+	auto clear_board() -> void
+	{
+		for (auto& v : board)
+			for (auto& p : v)
+				p = Piece::NONE;
+	}
+
+	auto place_at(BoardIndex row, BoardIndex col, Piece piece) -> void
+	{
+		board[row][col] = piece;
+	}
+
+	auto set_turn(Turn new_turn) -> void
+	{
+		turn = new_turn;
+	}
+
 	auto get_at(BoardIndex row, BoardIndex col) const -> Piece
 	{
 		return board[row][col];
@@ -110,11 +127,19 @@ public:
 		return true;
 	}
 
-	auto castle(BoardIndex row_o,
-		BoardIndex col_o,
-		bool validate) -> bool
+	auto get_stalemate() const -> bool
 	{
-		return true;
+		return false;
+	}
+
+	auto get_black_wins() const -> bool
+	{
+		return false;
+	}
+
+	auto get_white_wins() const -> bool
+	{
+		return false;
 	}
 
 private:
