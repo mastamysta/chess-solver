@@ -5,74 +5,52 @@
 #include <ranges>
 #include <algorithm>
 
+#include "piece.hpp"
+#include "common.hpp"
+
 namespace game
 {
 
 class GameState
 {
 public:
-	using BoardIndex = uint8_t;
-
 	GameState()
 	{
 		board = std::vector<std::vector<Piece>>(8,
-			std::vector<Piece>(8, Piece::NONE));
+			std::vector<Piece>(8, Piece(Type::NONE, Colour::NONE)));
 
 		// Setup pawns
-		board[1] = std::vector<Piece>(8, Piece::BPAWN);
-		board[6] = std::vector<Piece>(8, Piece::WPAWN);
+		board[1] = std::vector<Piece>(8, Piece(Type::PAWN, Colour::BLACK));
+		board[6] = std::vector<Piece>(8, Piece(Type::PAWN, Colour::WHITE));
 
 		// Setup rooks
-		board[0][0] = Piece::BROOK;
-		board[0][7] = Piece::BROOK;
-		board[7][0] = Piece::WROOK;
-		board[7][7] = Piece::WROOK;
+		board[0][0] = Piece(Type::ROOK, Colour::BLACK);
+		board[0][7] = Piece(Type::ROOK, Colour::BLACK);
+		board[7][0] = Piece(Type::ROOK, Colour::WHITE);
+		board[7][7] = Piece(Type::ROOK, Colour::WHITE);
 
 		// Setup knights
-		board[0][1] = Piece::BKNIGHT;
-		board[0][6] = Piece::BKNIGHT;
-		board[7][1] = Piece::WKNIGHT;
-		board[7][6] = Piece::WKNIGHT;
+		board[0][1] = Piece(Type::KNIGHT, Colour::BLACK);
+		board[0][6] = Piece(Type::KNIGHT, Colour::BLACK);
+		board[7][1] = Piece(Type::KNIGHT, Colour::WHITE);
+		board[7][6] = Piece(Type::KNIGHT, Colour::WHITE);
 
 		// Setup bishops
-		board[0][2] = Piece::BBISHOP;
-		board[0][5] = Piece::BBISHOP;
-		board[7][2] = Piece::WBISHOP;
-		board[7][5] = Piece::WBISHOP;
+		board[0][2] = Piece(Type::BISHOP, Colour::BLACK);
+		board[0][5] = Piece(Type::BISHOP, Colour::BLACK);
+		board[7][2] = Piece(Type::BISHOP, Colour::WHITE);
+		board[7][5] = Piece(Type::BISHOP, Colour::WHITE);
 
 		// Setup kings
-		board[0][4] = Piece::BKING;
-		board[7][4] = Piece::WKING;
+		board[0][4] = Piece(Type::KING, Colour::BLACK);
+		board[7][4] = Piece(Type::KING, Colour::WHITE);
 
 		// Setup queens
-		board[0][3] = Piece::BQUEEN;
-		board[7][3] = Piece::WQUEEN;
+		board[0][3] = Piece(Type::QUEEN, Colour::BLACK);
+		board[7][3] = Piece(Type::QUEEN, Colour::WHITE);
 	}	
-	
-	enum class Turn
-	{
-		BLACK,
-		WHITE
-	};
 
-	enum class Piece
-	{
-		NONE,
-		WPAWN,
-		WROOK,
-		WKNIGHT,
-		WBISHOP,
-		WKING,
-		WQUEEN,
-		BPAWN,
-		BROOK,
-		BKNIGHT,
-		BBISHOP,
-		BKING,
-		BQUEEN
-	};
-
-	auto get_turn() const -> Turn
+	auto get_turn() const -> Colour
 	{
 		return turn;
 	}
@@ -86,7 +64,7 @@ public:
 	{
 		for (auto& v : board)
 			for (auto& p : v)
-				p = Piece::NONE;
+				p = Piece(Type::NONE, Colour::NONE);
 	}
 
 	auto place_at(BoardIndex row, BoardIndex col, Piece piece) -> void
@@ -94,35 +72,36 @@ public:
 		board[row][col] = piece;
 	}
 
-	auto set_turn(Turn new_turn) -> void
+	auto set_turn(Colour new_turn) -> void
 	{
 		turn = new_turn;
 	}
 
-	auto get_at(BoardIndex row, BoardIndex col) const -> Piece
+	auto at(Position pos) -> Piece&
 	{
-		return board[row][col];
+		return board[pos.first][pos.second];
 	}
 
-	auto move(BoardIndex row_o,
-			  BoardIndex col_o,
-			  BoardIndex row_d,
-			  BoardIndex col_d,
+	auto move(Position o,
+			  Position d,
 			  bool validate) -> bool
 	{
-		auto moved_piece = board[row_o][col_o];
+		auto moved_piece = at(o);
 
-		if (validate && !validate_move(row_o, col_o, row_d, col_d))
+		// TODO: Should be some piece-generic validation here
+		// around capturing own pieces/moving off the board.
+
+		if (validate &&
+			moved_piece.moves_to.find(d)
+			== moved_piece.moves_to.end())
 			return false;
 
-		board[row_d][col_d] = moved_piece;
-		board[row_o][col_o] = Piece::NONE;
+		at(d) = moved_piece;
+		at(o) = Piece();
 
-		// Pawn promotion... will refactor this to be open-closed later.
-		if (moved_piece == Piece::WPAWN && row_d == 0)
-			board[row_d][col_d] = Piece::WQUEEN;
-		if (moved_piece == Piece::BPAWN && row_d == 7)
-			board[row_d][col_d] = Piece::BQUEEN;
+		for (auto i = 0; i < 8; i++)
+			for (auto j = 0; j < 8; j++)
+				update({i, j});
 
 		return true;
 	}
@@ -143,236 +122,125 @@ public:
 	}
 
 private:
-	Turn turn = Turn::WHITE;
+	Colour turn = Colour::WHITE;
 	std::vector<std::vector<Piece>> board;
 
-	auto is_black(Piece piece) const -> bool
+	auto update(const Position& pos) -> void
 	{
-		if (piece == Piece::NONE) // Yuck exceptions, but lets make debugging easy.
-			throw std::invalid_argument("Attempting to check colour on NONE.\n");
+		auto& piece = at(pos);
 
-		switch (piece)
+		// Pawn promotion... something of a special case.
+		if (piece._type == Type::PAWN &&
+		   ((piece._colour == Colour::BLACK && pos.first == 7) ||
+			(piece._colour == Colour::WHITE && pos.first == 0)))
+				piece._type = Type::QUEEN;
+
+		piece.attacks.clear();
+		piece.moves_to.clear();
+
+		update_attacks(pos);
+		update_moves_to(pos);
+	}
+
+	auto update_attacks(const Position& pos) -> void
+	{
+		switch (at(pos)._type)
 		{
-		case Piece::BPAWN:
-		case Piece::BROOK:
-		case Piece::BKNIGHT:
-		case Piece::BBISHOP:
-		case Piece::BQUEEN:
-		case Piece::BKING:
-			return true;
-		default:
+		case Type::PAWN:
+			pawn_update_attacks(pos);
 			break;
-		}
-
-		return false;
-	}
-
-	auto same_colour(Piece a, Piece b) const -> bool
-	{
-		return is_black(a) == is_black(b);
-	}
-
-	auto validate_move(BoardIndex row_o,
-					   BoardIndex col_o,
-					   BoardIndex row_d,
-					   BoardIndex col_d) const -> bool
-	{
-		auto moved_piece = board[row_o][col_o];
-		auto dest_piece = board[row_d][col_d];
-
-		// Not moving a piece is NEVER allowed.
-		if (row_o == row_d && col_o == col_d)
-			return false;
-
-		// Capturing own piece is never allowed.
-		if (dest_piece != Piece::NONE && same_colour(moved_piece, dest_piece))
-			return false;
-
-		switch (moved_piece)
-		{
-		case Piece::BPAWN:
-		case Piece::WPAWN:
-			return validate_pawn_move(row_o, col_o, row_d, col_d);
-		case Piece::BKING:
-		case Piece::WKING:
-			return validate_king_move(row_o, col_o, row_d, col_d);
-		case Piece::BROOK:
-		case Piece::WROOK:
-			return validate_rook_move(row_o, col_o, row_d, col_d);
-		case Piece::BBISHOP:
-		case Piece::WBISHOP:
-			return validate_bishop_move(row_o, col_o, row_d, col_d);
-		case Piece::BKNIGHT:
-		case Piece::WKNIGHT:
-			return validate_knight_move(row_o, col_o, row_d, col_d);
-		case Piece::BQUEEN:
-		case Piece::WQUEEN:
-			return validate_queen_move(row_o, col_o, row_d, col_d);
+		case Type::KING:
+			king_update_attacks(pos);
+			break;
+		case Type::QUEEN:
+		case Type::ROOK:
+		case Type::KNIGHT:
+		case Type::BISHOP:
 		default:
 			std::cout << "ERROR: Unexpected piece.\n";
 			break;
 		}
-
-		return false;
 	}
 
-	auto get_range(int init, int dest) const -> std::vector<int>
+	auto update_moves_to(const Position& pos) -> void
+	{
+		switch (at(pos)._type)
+		{
+		case Type::PAWN:
+			pawn_update_moves_to(pos);
+			break;
+		case Type::KING:
+			king_update_moves_to(pos);
+			break;
+		case Type::QUEEN:
+		case Type::ROOK:
+		case Type::KNIGHT:
+		case Type::BISHOP:
+		default:
+			std::cout << "ERROR: Unexpected piece.\n";
+			break;
+		}
+	}
+
+	auto pawn_update_attacks(const Position& pos) -> void
+	{
+		auto& piece = at(pos);
+
+		auto forward = 0;
+
+		if (piece._colour == Colour::WHITE)
+			forward = -1;
+		else
+			forward = 1;
+
+		if (pos.second != 0)
+			piece.attacks.insert({ pos.first + forward, pos.second - 1 });
+
+		if (pos.second != 7)
+			piece.attacks.insert({ pos.first + forward, pos.second + 1 });
+	}
+
+	auto pawn_update_moves_to(const Position& pos) -> void
+	{
+		auto& piece = at(pos);
+
+		auto forward = 0;
+
+		if (piece._colour == Colour::WHITE)
+			forward = -1;
+		else
+			forward = 1;
+
+		Position advance = { pos.first + forward, pos.second };
+
+		if (at(advance)._type == Type::NONE)
+			piece.moves_to.insert(advance);
+
+		// TODO: Need to add two square move for first move with pawn.
+
+		for (const auto p : piece.attacks)
+			if (at(p)._type != Type::NONE)
+				piece.moves_to.insert(p);
+	}
+
+
+	auto king_update_attacks(const Position& pos) -> void
+	{
+		auto& piece = at(pos);
+
+	}
+
+	auto king_update_moves_to(const Position& pos) -> void
+	{
+	}
+
+	static auto get_range(int init, int dest) -> std::vector<int>
 	{
 		std::vector<int> r(std::abs(init - dest) + 1, 0);
 		int direction = init - dest > 0 ? -1 : 1;
 		std::ranges::generate(r, [&init, direction]() { init += direction;
 		return init - direction;  });
 		return r;
-	}
-	
-	auto validate_queen_move(BoardIndex row_o,
-							BoardIndex col_o,
-							BoardIndex row_d,
-							BoardIndex col_d) const -> bool
-	{
-		return validate_bishop_move(row_o, col_o, row_d, col_d) ||
-					validate_rook_move(row_o, col_o, row_d, col_d);
-	}
-	
-	auto validate_knight_move(BoardIndex row_o,
-							BoardIndex col_o,
-							BoardIndex row_d,
-							BoardIndex col_d) const -> bool
-	{
-		auto vertical = std::abs(row_o - row_d);
-		auto horizontal = std::abs(col_o - col_d);
-
-		if (std::min(vertical, horizontal) != 1 ||
-			std::max(vertical, horizontal) != 2)
-			return false;
-
-		return true;
-	}
-	
-	auto validate_rook_move(BoardIndex row_o,
-							BoardIndex col_o,
-							BoardIndex row_d,
-							BoardIndex col_d) const -> bool
-	{
-		bool vertical = std::abs(row_o - row_d);
-		bool horizontal = std::abs(col_o - col_d);
-
-		// May only move horizontally or vertically.
-		if (vertical && horizontal)
-			return false;
-
-		auto orig = 0, dest = 0;
-
-		if (vertical)
-		{
-			orig = row_o;
-			dest = row_d;
-		}
-		else
-		{
-			orig = col_o;
-			dest = col_d;
-		}
-
-		auto r = get_range(orig, dest);
-
-		for (auto i : r)
-		{
-			if (i == dest || i == orig)
-				continue;
-
-			if ((vertical && board[i][col_o] != Piece::NONE) ||
-				(horizontal && board[row_o][i] != Piece::NONE))
-				return false;
-		}
-
-		return true;
-	}
-
-	auto validate_bishop_move(BoardIndex row_o,
-								BoardIndex col_o,
-								BoardIndex row_d,
-								BoardIndex col_d) const -> bool
-	{
-		if (std::abs(row_o - row_d) != std::abs(col_o - col_d))
-			return false;
-
-		auto dist = std::abs(row_o - row_d);
-		auto cols = get_range(col_o, col_d);
-		auto rows = get_range(row_o, row_d);
-
-		for (auto i = 0; i < dist; i++)
-		{
-			int col = cols[i], row = rows[i];
-
-			if (row == row_d || row == row_o)
-				continue;
-
-			if (board[row][col] != Piece::NONE)
-				return false;
-		}
-
-		return true;
-	}
-
-	auto validate_king_move(BoardIndex row_o,
-							BoardIndex col_o,
-							BoardIndex row_d,
-							BoardIndex col_d) const -> bool
-	{
-		auto piece = board[row_o][col_o];
-		auto dest_piece = board[row_d][col_d];
-
-		if (std::abs(row_o - row_d) > 1 || std::abs(col_o - col_d) > 1)
-			return false;
-
-		return true;
-	}
-
-	auto validate_pawn_move(BoardIndex row_o,
-							BoardIndex col_o,
-							BoardIndex row_d,
-							BoardIndex col_d) const -> bool
-	{
-		auto piece = board[row_o][col_o];
-		auto dest_piece = board[row_d][col_d];
-
-		// Rules to avoid moving non-forward.
-		if (piece == Piece::BPAWN && row_d <= row_o)
-			return false;
-		if (piece == Piece::WPAWN && row_d >= row_o)
-			return false;
-
-		// Early rules to allow going one diagonally to capture.
-		if (std::abs(row_o - row_d) == 1 && std::abs(col_o - col_d) == 1 &&
-			dest_piece != Piece::NONE)
-			return true;
-
-		// Rule to avoid moving sideways.
-		if (col_o != col_d)
-			return false;
-
-		auto dist = std::abs(row_o - row_d);
-
-		// Rules to avoid moving two spaces except on first turn.
-		if (dist > 2)
-			return false;
-		if (dist == 2 && piece == Piece::WPAWN && row_o != 6)
-			return false;
-		if (dist == 2 && piece == Piece::BPAWN && row_o != 1)
-			return false;
-
-		// Rules to avoid jumping over pieces.
-		if (dist == 2 && piece == Piece::BPAWN && board[row_o + 1][col_o] != Piece::NONE)
-			return false;
-		if (dist == 2 && piece == Piece::WPAWN && board[row_o - 1][col_o] != Piece::NONE)
-			return false;
-
-		// Rules to avoid capturing directly forward.
-		if (board[row_d][col_d] != Piece::NONE)
-			return false;
-
-		return true;
 	}
 
 };

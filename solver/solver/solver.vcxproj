@@ -128,7 +128,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="gameplay.hpp" />
+    <ClInclude Include="common.hpp" />
+    <ClInclude Include="pawn.hpp" />
+    <ClInclude Include="piece.hpp" />
     <ClInclude Include="state.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
