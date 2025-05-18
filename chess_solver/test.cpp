@@ -536,6 +536,66 @@ TEST(GameStateTests, CanCastle)
 							true));
 }
 
+TEST(GameStateTests, CantCastleAfterMoving)
+{
+	auto game = game::GameState();
+
+	ASSERT_TRUE(game.move(WHITE_HOME_ROW,
+							LEFT_ROOK_COL + 1,
+							WHITE_PAWN_ROW - 1,
+							LEFT_ROOK_COL + 1,
+							false));
+	ASSERT_TRUE(game.move(WHITE_HOME_ROW,
+							LEFT_ROOK_COL + 2,
+							WHITE_PAWN_ROW - 1,
+							LEFT_ROOK_COL + 2,
+							false));
+
+	ASSERT_TRUE(game.move(WHITE_HOME_ROW,
+							LEFT_ROOK_COL,
+							WHITE_HOME_ROW,
+							LEFT_ROOK_COL+1,
+							true));
+	ASSERT_TRUE(game.move(WHITE_HOME_ROW,
+							LEFT_ROOK_COL,
+							WHITE_HOME_ROW,
+							LEFT_ROOK_COL,
+							true));
+
+	ASSERT_FALSE(game.move(WHITE_HOME_ROW,
+							LEFT_ROOK_COL,
+							WHITE_HOME_ROW,
+							KING_STARTING_COL,
+							true));
+}
+
+TEST(GameStateTests, CantCastleThroughAttackedCells)
+{
+	auto game = game::GameState();
+
+	ASSERT_TRUE(game.move(WHITE_HOME_ROW,
+							LEFT_ROOK_COL + 1,
+							WHITE_PAWN_ROW - 1,
+							LEFT_ROOK_COL + 1,
+							false));
+	ASSERT_TRUE(game.move(WHITE_HOME_ROW,
+							LEFT_ROOK_COL + 2,
+							WHITE_PAWN_ROW - 1,
+							LEFT_ROOK_COL + 2,
+							false));
+	ASSERT_TRUE(game.move(BLACK_HOME_ROW,
+							LEFT_KNIGHT_COL,
+							WHITE_PAWN_ROW - 1,
+							LEFT_BISHOP_COL,
+							false));
+
+	ASSERT_FALSE(game.move(WHITE_HOME_ROW,
+							LEFT_ROOK_COL,
+							WHITE_HOME_ROW,
+							KING_STARTING_COL,
+							true));
+}
+
 TEST(GameStateTests, BishopCanMove)
 {
 	auto game = game::GameState();
@@ -693,7 +753,6 @@ TEST(GameStateTests, StalemateInsufficientMaterial)
 	ASSERT_TRUE(game.get_stalemate());
 }
 
-
 TEST(GameStateTests, BlackCheckMate)
 {
 	auto game = game::GameState();
@@ -705,7 +764,6 @@ TEST(GameStateTests, BlackCheckMate)
 
 	ASSERT_TRUE(game.get_white_wins());
 }
-
 
 TEST(GameStateTests, WhiteCheckMate)
 {
