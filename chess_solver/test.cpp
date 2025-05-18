@@ -324,6 +324,23 @@ TEST(GameStateTests, PawnCantCaptureOwnPiece)
 }
 
 
+TEST(GameStateTests, PawnPromotes)
+{
+	auto game = game::GameState();
+
+	ASSERT_TRUE(game.move(WHITE_PAWN_ROW,
+							0,
+							BLACK_PAWN_ROW,
+							0,
+							false));
+	ASSERT_TRUE(game.move(BLACK_PAWN_ROW,
+							0,
+							BLACK_HOME_ROW,
+							1,
+							true));
+	ASSERT_EQ(game.get_at(BLACK_HOME_ROW, 1), game::GameState::Piece::WQUEEN);
+}
+
 TEST(GameStateTests, KingCantCaptureOwnPiece)
 {
 	auto game = game::GameState();
@@ -410,6 +427,23 @@ TEST(GameStateTests, KingCanMove)
 	ASSERT_TRUE(game.move(new_king_row,
 							KING_STARTING_COL,
 							new_king_row+1,
+							KING_STARTING_COL,
+							true));
+}
+
+TEST(GameStateTests, KingCantMoveIntoCheck)
+{
+	auto game = game::GameState();
+	auto new_king_row = BLACK_PAWN_ROW + 2;
+
+	ASSERT_TRUE(game.move(WHITE_KING_STARTING_ROW,
+							KING_STARTING_COL,
+							new_king_row,
+							KING_STARTING_COL,
+							false));
+	ASSERT_FALSE(game.move(new_king_row,
+							KING_STARTING_COL,
+							new_king_row - 1,
 							KING_STARTING_COL,
 							true));
 }

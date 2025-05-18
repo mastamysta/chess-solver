@@ -101,6 +101,12 @@ public:
 		board[row_d][col_d] = moved_piece;
 		board[row_o][col_o] = Piece::NONE;
 
+		// Pawn promotion... will refactor this to be open-closed later.
+		if (moved_piece == Piece::WPAWN && row_d == 0)
+			board[row_d][col_d] = Piece::WQUEEN;
+		if (moved_piece == Piece::BPAWN && row_d == 7)
+			board[row_d][col_d] = Piece::BQUEEN;
+
 		return true;
 	}
 
