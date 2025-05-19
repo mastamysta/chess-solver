@@ -225,13 +225,13 @@ TEST(GameStateTests, WhitePawnCantJump)
 	// First move the white king in front of a pawn.
 	ASSERT_TRUE(game.move({ WHITE_KING_STARTING_ROW,
 							KING_STARTING_COL },
-							{WHITE_KING_STARTING_ROW - 2,
+							{ WHITE_PAWN_ROW - 1,
 							KING_STARTING_COL},
 							false));
 	// Now try to skip pawn over king.
-	ASSERT_FALSE(game.move({ WHITE_KING_STARTING_ROW - 1,
+	ASSERT_FALSE(game.move({ WHITE_PAWN_ROW,
 							KING_STARTING_COL },
-							{WHITE_KING_STARTING_ROW - 3,
+							{ WHITE_PAWN_ROW - 2,
 							KING_STARTING_COL},
 							true));
 }
@@ -398,16 +398,22 @@ TEST(GameStateTests, KingCantMoveMoreThanOneSideways)
 TEST(GameStateTests, KingCanCapture)
 {
 	auto game = GameState();
-	auto new_king_row = BLACK_PAWN_ROW + 1;
+	auto new_king_row = 4;
+	auto new_pawn_row = new_king_row-1;
 
 	ASSERT_TRUE(game.move({ WHITE_KING_STARTING_ROW,
 							KING_STARTING_COL },
 							{new_king_row,
 							KING_STARTING_COL},
 							false));
+	ASSERT_TRUE(game.move({ BLACK_PAWN_ROW,
+							KING_STARTING_COL },
+							{ new_pawn_row,
+							KING_STARTING_COL },
+							false));
 	ASSERT_TRUE(game.move({ new_king_row,
 							KING_STARTING_COL },
-							{BLACK_PAWN_ROW,
+							{ new_pawn_row,
 							KING_STARTING_COL},
 							true));
 }
