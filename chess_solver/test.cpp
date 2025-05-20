@@ -743,6 +743,7 @@ TEST(GameStateTests, StalemateNoMoves)
 	game.place_at(1, 7, Piece(Type::ROOK, Colour::WHITE));
 	game.place_at(7, 1, Piece(Type::ROOK, Colour::WHITE));
 	game.set_turn(game::Colour::BLACK);
+	game.update_all();
 	
 	ASSERT_TRUE(game.get_stalemate());
 }
@@ -754,6 +755,7 @@ TEST(GameStateTests, StalemateInsufficientMaterial)
 	game.place_at(0, 0, Piece(Type::KING, Colour::BLACK));
 	game.place_at(7, 7, Piece(Type::KING, Colour::WHITE));
 	game.set_turn(game::Colour::BLACK);
+	game.update_all();
 
 	ASSERT_TRUE(game.get_stalemate());
 }
@@ -766,8 +768,9 @@ TEST(GameStateTests, BlackCheckMate)
 	game.place_at(7, 1, Piece(Type::ROOK, Colour::WHITE));
 	game.place_at(7, 0, Piece(Type::ROOK, Colour::WHITE));
 	game.set_turn(game::Colour::BLACK);
+	game.update_all();
 
-	ASSERT_TRUE(game.get_white_wins());
+	ASSERT_TRUE(game.get_checkmate());
 }
 
 TEST(GameStateTests, WhiteCheckMate)
@@ -778,8 +781,9 @@ TEST(GameStateTests, WhiteCheckMate)
 	game.place_at(7, 1, Piece(Type::ROOK, Colour::BLACK));
 	game.place_at(7, 0, Piece(Type::ROOK, Colour::BLACK));
 	game.set_turn(game::Colour::WHITE);
+	game.update_all();
 
-	ASSERT_TRUE(game.get_black_wins());
+	ASSERT_TRUE(game.get_checkmate());
 }
 
 TEST(GameStateTests, MustAddressCheck)
@@ -790,6 +794,7 @@ TEST(GameStateTests, MustAddressCheck)
 	game.place_at(4, 2, Piece(Type::PAWN, Colour::BLACK));
 	game.place_at(7, 0, Piece(Type::ROOK, Colour::WHITE));
 	game.set_turn(game::Colour::BLACK);
+	game.update_all();
 
 	ASSERT_FALSE(game.move({ 4,
 							2 },

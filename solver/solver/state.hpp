@@ -44,6 +44,8 @@ public:
 		// Setup kings
 		board[0][4] = Piece(Type::KING, Colour::BLACK);
 		board[7][4] = Piece(Type::KING, Colour::WHITE);
+		black_king = { 0, 4 };
+		white_king = { 7, 4 };
 
 		// Setup queens
 		board[0][3] = Piece(Type::QUEEN, Colour::BLACK);
@@ -84,9 +86,15 @@ public:
 		return board[pos.first][pos.second];
 	}
 
+	auto at(Position pos) const -> const Piece&
+	{
+		return board[pos.first][pos.second];
+	}
+
 	auto move(Position o,
 			  Position d,
-			  bool validate) -> bool
+			  bool validate,
+			  bool enforce_check_response = true) -> bool
 	{
 		auto moved_piece = at(o);
 
@@ -98,6 +106,11 @@ public:
 			== moved_piece.moves_to.end())
 			return false;
 
+		if (validate && enforce_check_response &&
+			get_check(moved_piece._colour) && in_check_after_move(o, d))
+			return false;
+
+
 		at(d) = moved_piece;
 		at(o) = Piece();
 
@@ -106,32 +119,88 @@ public:
 		return true;
 	}
 
+	auto get_active_player_cant_move() const -> bool
+	{
+		// We need a list of moves that each player may make... this is really
+		// Just a list of pieces that each player has, as each piece contains
+		// the list of moves it can make.
+
+		// This will be an iteration through all the pieces and return false if
+		// player has a move, otherwise true.
+		for (auto i = 0; i < 8; i++)
+			for (auto j = 0; j < 8; j++)
+				if (at({ i, j })._colour == turn &&
+					!at({ i, j }).moves_to.empty())
+					return false;
+
+		return true;
+	}
+
 	auto get_stalemate() const -> bool
 	{
-		return false;
+		if (get_active_player_cant_move())
+			return true;
+
+		// Now check for insufficient material
+		for (auto i = 0; i < 8; i++)
+			for (auto j = 0; j < 8; j++)
+				if (at({ i, j })._type != Type::NONE &&
+					at({ i, j })._type != Type::KING)
+					return false;
+
+		return true;
 	}
 
-	auto get_black_wins() const -> bool
+	auto get_checkmate() const -> bool
 	{
-		return false;
+		// Need to check every move the player may make and see if it gets
+		// them out of check. If there is none then GG.
+
+		// If it ain't check, it ain't checkmate!
+		if (!get_check(turn)) 
+			return false;
+
+		for (auto i = 0; i < 8; i++)
+			for (auto j = 0; j < 8; j++)
+			{
+				Position o = { i, j };
+
+				if (at(o)._colour != turn)
+					continue;
+
+				for (auto d : at(o).moves_to)
+				{
+					if (!in_check_after_move(o, d))
+						return false;
+				}
+			}
+
+		return true;
 	}
 
-	auto get_white_wins() const -> bool
+	auto get_check(Colour colour) const -> bool
 	{
+		if (colour == Colour::BLACK)
+			return attacked_by_white.find(black_king) != attacked_by_white.end();
+		else if (colour == Colour::WHITE)
+			return attacked_by_black.find(white_king) != attacked_by_black.end();
+		else
+			std::cout << "ERROR: Checking if neither side is in check.\n";
+
 		return false;
 	}
 
-private:
-	Colour turn = Colour::WHITE;
-	std::vector<std::vector<Piece>> board;
-	std::set<Position> attacked_by_black, attacked_by_white;
+	auto in_check_after_move(Position o, Position d) const -> bool
+	{
+		auto s = *this;
+		s.move(o, d, true, false);
+		return s.get_check(s.at(d)._colour);
+	}
 
 	auto update_all() -> void
 	{
 		attacked_by_black.clear();
 		attacked_by_white.clear();
-
-		Position black_king, white_king;
 
 		for (auto i = 0; i < 8; i++)
 			for (auto j = 0; j < 8; j++)
@@ -145,6 +214,13 @@ private:
 		update(black_king);
 		update(white_king);
 	}
+
+private:
+	Colour turn = Colour::WHITE;
+	std::vector<std::vector<Piece>> board;
+	std::set<Position> attacked_by_black, attacked_by_white;
+	Position black_king, white_king;
+	std::set<Position> black_pieces, white_pieces;
 
 	auto update(const Position& pos) -> void
 	{
