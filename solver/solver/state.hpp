@@ -98,9 +98,6 @@ public:
 	{
 		auto moved_piece = at(o);
 
-		// TODO: Should be some piece-generic validation here
-		// around capturing own pieces/moving off the board.
-
 		if (validate &&
 			moved_piece.moves_to.find(d)
 			== moved_piece.moves_to.end())
@@ -110,9 +107,15 @@ public:
 			get_check(moved_piece._colour) && in_check_after_move(o, d))
 			return false;
 
+		if (validate &&
+			moved_piece._type == Type::ROOK &&
+			at(d)._type == Type::KING &&
+			!castle_check(o, d))
+			return false;
 
 		at(d) = moved_piece;
 		at(o) = Piece();
+		at(d).has_moved = true;
 
 		update_all();
 
@@ -331,6 +334,31 @@ private:
 			attacked_by_white.find(pos) != attacked_by_white.end()) ||
 			(c == Colour::WHITE &&
 				attacked_by_black.find(pos) != attacked_by_black.end());
+	}
+
+	auto castle_check(Position o, Position d) const -> bool
+	{
+		auto rook = at(o);
+
+		if (rook.has_moved || at(d).has_moved)
+			return false;
+
+		bool left = o.second < d.second;
+
+		std::vector<int> attack_checks;
+
+		if (left)
+			attack_checks = { 0, -1, -2 };
+		else
+			attack_checks = { 0, 1, 2 };
+
+		for (auto c : attack_checks)
+			if (attacked_by_oponent({ d.first, d.second + c }, rook._colour));
+				return false;
+
+		// TODO: check cells for occupied-ness
+
+		return true;
 	}
 
 	auto king_update_attacks(const Position& pos) -> void
