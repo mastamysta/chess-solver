@@ -69,6 +69,9 @@ public:
 		for (auto& v : board)
 			for (auto& p : v)
 				p = Piece(Type::NONE, Colour::NONE);
+
+		attacked_by_black.clear();
+		attacked_by_white.clear();
 	}
 
 	auto place_at(BoardIndex row, BoardIndex col, Piece piece) -> void
@@ -109,13 +112,22 @@ public:
 
 		if (validate &&
 			moved_piece._type == Type::ROOK &&
-			at(d)._type == Type::KING &&
-			!castle_check(o, d))
-			return false;
-
-		at(d) = moved_piece;
-		at(o) = Piece();
-		at(d).has_moved = true;
+			at(d)._type == Type::KING)
+		{
+			// Do castle
+			int direction = o.second < d.second ? -1 : +1;
+			at({ d.first, d.second + (2 * direction) }) = at(d);
+			at({ d.first, d.second + direction }) = at(d);
+			at(d) = Piece();
+			at(o) = Piece();
+			d = { d.first, d.second + (2 * direction) };
+		}
+		else
+		{
+			at(d) = moved_piece;
+			at(o) = Piece();
+			at(d).has_moved = true;
+		}
 
 		update_all();
 
@@ -207,15 +219,25 @@ public:
 
 		for (auto i = 0; i < 8; i++)
 			for (auto j = 0; j < 8; j++)
-				if (at({ i, j })._type != Type::KING)
-					update({ i, j });
-				else if (at({ i, j })._colour == Colour::BLACK)
-					black_king = { i, j };
-				else
-					white_king = { i, j };
+			{
+				auto p = at({ i, j });
 
-		update(black_king);
-		update(white_king);
+				if (p._type == Type::KING && p._colour == Colour::BLACK)
+					black_king = { i,j };
+				else if (p._type == Type::KING && p._colour == Colour::WHITE)
+					white_king = { i, j };
+			}
+
+		for (auto i = 0; i < 8; i++)
+			for (auto j = 0; j < 8; j++)
+				if (at({i, j})._type != Type::KING)
+					update({ i, j });
+
+		// Have to update kings last so they know not to move into attacked space.
+		king_update_attacks(black_king);
+		king_update_attacks(white_king);
+		king_update_moves(black_king);
+		king_update_moves(white_king);
 	}
 
 private:
@@ -336,31 +358,6 @@ private:
 				attacked_by_black.find(pos) != attacked_by_black.end());
 	}
 
-	auto castle_check(Position o, Position d) const -> bool
-	{
-		auto rook = at(o);
-
-		if (rook.has_moved || at(d).has_moved)
-			return false;
-
-		bool left = o.second < d.second;
-
-		std::vector<int> attack_checks;
-
-		if (left)
-			attack_checks = { 0, -1, -2 };
-		else
-			attack_checks = { 0, 1, 2 };
-
-		for (auto c : attack_checks)
-			if (attacked_by_oponent({ d.first, d.second + c }, rook._colour));
-				return false;
-
-		// TODO: check cells for occupied-ness
-
-		return true;
-	}
-
 	auto king_update_attacks(const Position& pos) -> void
 	{
 		auto& piece = at(pos);
@@ -379,11 +376,17 @@ private:
 					continue;
 
 				piece.attacks.insert(p);
+			}
+	}
 
-				if (at(p)._colour != piece._colour &&
+	auto king_update_moves(const Position& pos) -> void
+	{
+		auto& piece = at(pos);
+
+		for (auto p: piece.attacks)
+			if (at(p)._colour != piece._colour &&
 					!attacked_by_oponent(p, piece._colour))
 					piece.moves_to.insert(p);
-			}
 	}
 
 	auto queen_update_attacks(const Position& pos) -> void
@@ -403,6 +406,45 @@ private:
 			return false;
 
 		return true;
+	}
+
+	auto rook_update_castles(Position pos) -> void
+	{
+		auto& rook = at(pos);
+		Position kingpos = rook._colour == Colour::BLACK ? 
+							Position(0, 4) :
+							Position(7, 4) ;
+
+		if (rook.has_moved || 
+			at(kingpos)._type != Type::KING ||
+			at(kingpos).has_moved)
+			return;
+
+		bool left = pos.second < kingpos.second;
+
+		std::vector<int> attack_checks;
+
+		if (left)
+			attack_checks = { 0, -1, -2 };
+		else
+			attack_checks = { 0, 1, 2 };
+
+		for (auto c : attack_checks)
+			if (attacked_by_oponent({ kingpos.first, kingpos.second + c }, rook._colour))
+				return;
+
+		std::vector<int> occupied_checks;
+
+		if (left)
+			occupied_checks = { -1, -2, -3 };
+		else
+			occupied_checks = { 1, 2 };
+
+		for (auto c : occupied_checks)
+			if (at({ kingpos.first, kingpos.second + c })._type != Type::NONE)
+				return;
+
+		rook.moves_to.insert(kingpos);
 	}
 
 	auto rook_update_attacks(const Position& pos) -> void
@@ -440,6 +482,10 @@ private:
 			if (!check_cell(piece, p))
 				break;
 		}
+
+		// Reused by queen.
+		if (piece._type == Type::ROOK)
+			rook_update_castles(pos);
 	}
 
 	auto bishop_update_attacks(const Position& pos) -> void

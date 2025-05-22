@@ -533,6 +533,11 @@ TEST(GameStateTests, CanCastle)
 							{WHITE_PAWN_ROW-1,
 							LEFT_ROOK_COL+2},
 							false));
+	ASSERT_TRUE(game.move({ WHITE_HOME_ROW,
+							LEFT_ROOK_COL + 3 },
+							{ WHITE_PAWN_ROW - 1,
+							LEFT_ROOK_COL + 3 },
+							false));
 
 	ASSERT_TRUE(game.move({ WHITE_HOME_ROW,
 							LEFT_ROOK_COL },
@@ -562,7 +567,7 @@ TEST(GameStateTests, CantCastleAfterMoving)
 							LEFT_ROOK_COL+1},
 							true));
 	ASSERT_TRUE(game.move({ WHITE_HOME_ROW,
-							LEFT_ROOK_COL },
+							LEFT_ROOK_COL+1 },
 							{WHITE_HOME_ROW,
 							LEFT_ROOK_COL},
 							true));
